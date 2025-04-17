@@ -1,9 +1,9 @@
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Embedding, Conv1D, MaxPooling1D, LSTM, Dense, Dropout, Bidirectional
+from tensorflow.keras.layers import Embedding, Conv1D, MaxPooling1D, LSTM, Dense, Dropout, Bidirectional, SpatialDropout1D
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 import pickle
 import pandas as pd
 import numpy as np
@@ -15,10 +15,20 @@ from nltk.corpus import stopwords
 nltk.download('stopwords')
 stop_words = set(stopwords.words('english'))
 
-# Text cleaning function (only applies if raw data is used)
+# Text cleaning function
 def clean_text(text):
     text = text.lower()
-    text = re.sub(r"[^a-zA-Z0-9]", " ", text)  # Remove special characters
+    text = re.sub(r"[^a-zA-Z0-9!?.,' ]", " ", text)  
+    words = text.split()
+    cleaned_words = []
+
+    for word in words:
+        if re.fullmatch(r"\d+", word):
+            cleaned_words.append("[Number Detected]")
+        else:
+            cleaned_words.append(word)
+
+    text = " ".join(cleaned_words)
     text = " ".join([word for word in text.split() if word not in stop_words])
     return text
 
@@ -26,12 +36,14 @@ def clean_text(text):
 def create_model(input_length, vocab_size, embedding_dim=100):
     model = Sequential([
         Embedding(vocab_size, embedding_dim, input_length=input_length),
+        SpatialDropout1D(0.2),
         Conv1D(128, 5, activation='relu'),
         MaxPooling1D(pool_size=4),
         Bidirectional(LSTM(100, return_sequences=True)),
-        Dropout(0.5),
+        Dropout(0.3),
         LSTM(100),
-        Dense(3, activation='sigmoid')  # Only 3 output labels now
+        Dropout(0.3),
+        Dense(3, activation='sigmoid')  # Multi-label output
     ])
     model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
     return model
@@ -45,45 +57,35 @@ def preprocess_text(texts, tokenizer=None, max_len=100):
     data = pad_sequences(sequences, maxlen=max_len, truncating='post')
     return data, tokenizer
 
-# Load and prepare training data (excluding unwanted labels)
-def load_data(train_csv_path='train.csv', preprocessed_csv_path='train_preprocessed.csv', max_len=100):
+# Load and prepare training data
+def load_data(preprocessed_csv_path='train_preprocessed.csv', max_len=100):
+    print(f"Loading preprocessed data from {preprocessed_csv_path}...")
     if os.path.exists(preprocessed_csv_path):
-        print("Loading preprocessed data...")
         df = pd.read_csv(preprocessed_csv_path)
-    elif os.path.exists(train_csv_path):
-        print("Loading raw data and applying text cleaning...")
-        df = pd.read_csv(train_csv_path)
-        df['comment_text'] = df['comment_text'].astype(str).apply(clean_text)
     else:
-        raise FileNotFoundError("No training data found.")
+        raise FileNotFoundError("Preprocessed CSV file not found.")
 
-    # Keep only the desired labels
-    texts = df['comment_text'].astype(str).values
-    labels = df[['toxic', 'obscene', 'insult']].values  # Keeping only 3 labels
-
-    # Ensure labels are in binary format (0 or 1)
+    df['comment_text'] = df['comment_text'].astype(str).apply(clean_text)
+    texts = df['comment_text'].values
+    labels = df[['toxic', 'obscene', 'insult']].values
     labels = (labels > 0.5).astype(int)
-
     return texts, labels
 
 # Train the model
-def train_model(train_csv_path='train.csv', preprocessed_csv_path='train_preprocessed.csv', model_path='model.h5', tokenizer_path='tokenizer.pkl', epochs=5, batch_size=32, max_len=100):
-    texts, labels = load_data(train_csv_path, preprocessed_csv_path, max_len)
-    
-    # Preprocess text
+def train_model(preprocessed_csv_path='train_preprocessed.csv', model_path='model.h5', tokenizer_path='tokenizer.pkl', epochs=8, batch_size=32, max_len=100):
+    texts, labels = load_data(preprocessed_csv_path, max_len)
     data, tokenizer = preprocess_text(texts, max_len=max_len)
 
     vocab_size = len(tokenizer.word_index) + 1
     model = create_model(input_length=data.shape[1], vocab_size=vocab_size)
 
-    # Define callbacks
     checkpoint = ModelCheckpoint(model_path, monitor='val_loss', save_best_only=True, verbose=1)
     early_stopping = EarlyStopping(monitor='val_loss', patience=3, verbose=1)
+    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=2, verbose=1)
 
-    # Train model
-    model.fit(data, labels, epochs=epochs, batch_size=batch_size, validation_split=0.2, callbacks=[checkpoint, early_stopping], verbose=1)
+    model.fit(data, labels, epochs=epochs, batch_size=batch_size, validation_split=0.2,
+              callbacks=[checkpoint, early_stopping, reduce_lr], verbose=1)
 
-    # Save tokenizer
     with open(tokenizer_path, 'wb') as f:
         pickle.dump(tokenizer, f)
 
@@ -96,12 +98,11 @@ def load_model_and_tokenizer(model_path='model.h5', tokenizer_path='tokenizer.pk
         tokenizer = pickle.load(f)
     return model, tokenizer
 
-# Predict toxicity (now only outputs 3 categories)
+# Predict toxicity
 def predict_toxicity(model, tokenizer, text, max_len=100):
-    processed_text, _ = preprocess_text([text], tokenizer, max_len)
+    processed_text, _ = preprocess_text([clean_text(text)], tokenizer, max_len)
     prediction = model.predict(processed_text)[0]
-    
-    categories = ["Toxic", "Obscene", "Insult"]  # Only 3 categories now as the 3 other data lacked data to train
+    categories = ["Toxic", "Obscene", "Insult"]
     return {cat: float(pred) for cat, pred in zip(categories, prediction)}
 
 # Main training execution
