@@ -1,72 +1,70 @@
 import gradio as gr
 import matplotlib.pyplot as plt
-import logging
 from model import predict_toxicity, load_model_and_tokenizer
 
-# Load the trained model and tokenizer
+# Load the model and tokenizer
 model, tokenizer = load_model_and_tokenizer('model.h5', 'tokenizer.pkl')
 
-# Set up logging for error tracking
-logging.basicConfig(filename="error.log", level=logging.ERROR, format="%(asctime)s - %(levelname)s - %(message)s")
-
-# Gradio interface function with error handling
+# Toxicity prediction function
 def toxicity_predictor(text, chart_type):
+    text = text.strip()
+
+    if not text:
+        return None, "No input detected. Please provide some text."
+    if len(text) > 200:
+        return None, "Input text is too long. Please shorten your text."
+    if not chart_type:
+        return None, "Please select a chart type (Bar Chart or Pie Chart)."
+
     try:
-        if not text.strip():
-            return "Error: Please enter valid text."
-
         result = predict_toxicity(model, tokenizer, text)
-        labels = list(result.keys())
-        percentages = [round(value * 100, 2) for value in result.values()]  # Convert to percentage and round to 2 decimals
+        labels, percentages = zip(*[(k, round(v * 100, 2)) for k, v in result.items()])
 
-        # Check if all values are very low (below 1%)
         if sum(percentages) < 1:
-            return "No significant toxicity detected."
+            return None, "No significant toxicity detected."
 
-        # Create the selected chart
         fig, ax = plt.subplots(figsize=(8, 4))
 
         if chart_type == "Bar Chart":
             ax.bar(labels, percentages, color=['red' if p > 50 else 'skyblue' for p in percentages])
             ax.set_ylabel('Percentage')
             ax.set_title('Toxicity Prediction')
-            ax.set_ylim(0, 100)  # Set y-axis limit to 100%
+            ax.set_ylim(0, 100)
 
-            # Show percentages on bars
             for i, v in enumerate(percentages):
                 ax.text(i, v + 2, f"{v:.2f}%", ha='center', fontsize=10)
 
         elif chart_type == "Pie Chart":
-            # Only keep meaningful values (ignore 0%)
             filtered_data = [(p, l) for p, l in zip(percentages, labels) if p > 0]
-            if not filtered_data:  # If everything is 0%, return a message
-                return "No significant toxicity detected."
+            if not filtered_data:
+                return None, "No significant toxicity detected."
 
-            sorted_data = sorted(filtered_data, reverse=True)  # Sort in descending order
+            sorted_data = sorted(filtered_data, reverse=True)
             sorted_percentages, sorted_labels = zip(*sorted_data)
-
-            # Assign colors dynamically based on value rankings
             colors = ["red", "orange", "skyblue"][:len(sorted_percentages)]
-            
+
             ax.pie(sorted_percentages, labels=sorted_labels, autopct='%1.1f%%', colors=colors)
             ax.set_title('Toxicity Prediction')
 
-        return fig
+        return fig, None
 
     except Exception as e:
-        logging.error(f"Unexpected error: {e}")  # Log the error
-        return "Error: Something went wrong. Please try again."
+        return None, f"An unexpected error occurred: {str(e)}"
 
-# Create Gradio interface
+# Gradio app layout
 iface = gr.Interface(
     fn=toxicity_predictor,
     inputs=[
         gr.Textbox(lines=3, placeholder="Enter your text here..."),
         gr.Radio(choices=["Bar Chart", "Pie Chart"], label="Select Chart Type", value="Bar Chart")
     ],
-    outputs=gr.Plot()
+    outputs=[
+        gr.Plot(),  # Graph output
+        gr.Textbox(label="Error Message", interactive=False)  # Error message display
+    ],
+    title="CleanComment",  # Title added here
 )
 
-# Launch the Gradio interface
+# Launch app
 if __name__ == "__main__":
-    iface.launch()
+    iface.launch(share=True)
