@@ -84,6 +84,7 @@ python interface.py
 - **Python version:** 3.8 – 3.12
 - **IDE:** We recommend **Visual Studio Code (VSCode)** for running and editing the project.
 
+---
 
 ### **`test.py` - Model Evaluation**
 
