@@ -85,5 +85,18 @@ python interface.py
 - **IDE:** We recommend **Visual Studio Code (VSCode)** for running and editing the project.
 
 
+### **`test.py` - Model Evaluation**
+
+`test.py` is responsible for evaluating the performance of a pre-trained deep learning model on a validation dataset.
+
+#### What it does:
+- Loads the pre-trained model (`model.h5`) and the tokenizer (`tokenizer.pkl`) that were saved after training.
+- Loads and preprocesses the validation data from `train_preprocessed.csv`, splitting it into features and labels.
+- Evaluates the model on the validation data and calculates its performance using accuracy.
+- Prints a detailed **classification report**, which includes metrics such as precision, recall, and F1-score for each toxicity label (e.g., toxic, obscene, insult).
+
+---
+
+This file allows you to assess how well the trained model is performing on unseen data by providing key performance metrics.
 
 
