@@ -3,6 +3,14 @@
 Data 1: https://www.kaggle.com/datasets/fizzbuzz/cleaned-toxic-comments?select=train_preprocessed.csv
 - From Data 1, download train_preprocessed.csv (To run the Code, only this CSV file is needed)
 
+## Troubleshooting TensorFlow Issues
+
+If you're encountering issues with TensorFlow, try the following:
+
+1. Download or open the `DS44_Final_Code.ipynb` file in this repository.
+2. Run the notebook on **[Google Colab](https://colab.research.google.com/)** or **Jupyter Notebook** to ensure proper execution.
+
+This should help resolve any environment-related problems with TensorFlow.
 ## How to Run the Toxicity Detection App
 
 This app uses a trained deep learning model to detect and visualize different types of text toxicity using a simple Gradio web interface.
