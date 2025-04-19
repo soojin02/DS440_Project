@@ -29,14 +29,6 @@ pip install nltk
 pip install matplotlib
 pip install gradio
 ```
-
-> **Important:** After installing `nltk`, download the `stopwords` resource. Open Python and run:
-
-```python
-import nltk
-nltk.download('stopwords')
-```
-
 ---
 
 ### 1. Train the Model (`model.py`)
