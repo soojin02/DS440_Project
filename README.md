@@ -11,6 +11,7 @@ If you're encountering issues with TensorFlow, try the following:
 1. Download or open the `DS44_Final_Code.ipynb` file in this repository.
 2. Run the notebook on **[Google Colab](https://colab.research.google.com/)** or **Jupyter Notebook** to ensure proper execution.
 3. Upload the train_preprocessed.csv data file into the notebook environment. In Google Colab, this can be done by clicking the folder icon on the left and then uploading the file directly.
+      *Once uploaded, make sure the path to the dataset is correct in the code (e.g., /content/train_preprocessed.csv in Colab). This should help resolve any environment-related problems with TensorFlow.*
 
 This should help resolve any environment-related problems with TensorFlow.
 ## How to Run the Toxicity Detection App
