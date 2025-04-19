@@ -3,6 +3,7 @@
 Data 1: https://www.kaggle.com/datasets/fizzbuzz/cleaned-toxic-comments?select=train_preprocessed.csv
 - From Data 1, download train_preprocessed.csv (To run the Code, only this CSV file is needed)
 
+---
 ## Troubleshooting TensorFlow Issues
 
 If you're encountering issues with TensorFlow, try the following:
@@ -17,7 +18,7 @@ This app uses a trained deep learning model to detect and visualize different ty
 
 ---
 
-### 0. Install All Required Libraries
+### 0. Install All Required Libraries with **Visual Studio Code (VSCode)**.
 
 You need to install the following Python packages before running the app.
 
